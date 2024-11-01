@@ -37,7 +37,7 @@ class Client:
 
     def receive_message(self):
         message = self.client_socket.recv(1024).decode()
-        print("Received from Key Distribution Center: " + message)
+        # print("Received from Key Distribution Center: " + message)
         return message
 
 
@@ -46,7 +46,7 @@ if __name__ == "__main__":
     client.connect_to_kdc()
     while True and client.authenticated:
         try:
-            message = input("Enter message: ")
+            message = input("Enter command: ")
             client.send_message(message)
             response = client.receive_message()
             print("Response from Key Distribution Center:", response)

@@ -3,10 +3,11 @@ from threading import Lock, Thread
 
 
 class KeyDistributionCenter:
-    def __init__(self, kdc_port=8000):
+    def __init__(self, kdc_port=8000, kdc_password="password"):
         self.kdc_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.kdc_port = kdc_port
         self.connected_clients = {}
+        self.kdc_password = kdc_password
         self.lock = Lock()  # Protect access to shared resources
 
     def start(self):
@@ -54,9 +55,11 @@ class KeyDistributionCenter:
                     break
                 print(f"Received from Client with {addr}: {msg}")
 
-                # Process request (e.g., send session key or handle other commands)
-                # For now, just echoing the message back
-                client_socket.sendto(f"ECHO: {msg}".encode("utf-8"), addr)
+                if msg.count("client_list") > 0:
+                    client_list_to_send = self.get_other_connected_clients(addr)
+                    client_socket.sendto(client_list_to_send.encode("utf-8"), addr)
+                else:
+                    client_socket.sendto("Unknown Command".encode("utf-8"), addr)
 
         except (ConnectionResetError, ConnectionAbortedError) as e:
             print(f"Connection error with {addr}: {e}")
@@ -71,16 +74,24 @@ class KeyDistributionCenter:
     def authenticate_client(self, client_socket: socket, addr):
         client_socket.sendto("Enter password:".encode("utf-8"), addr)
         password = client_socket.recv(1024).decode("utf-8")
-        if password == "password":
+        if password == self.kdc_password:
             client_socket.sendto("Authenticated successfully".encode("utf-8"), addr)
             return True
         else:
             client_socket.sendto("Authentication failed".encode("utf-8"), addr)
             return False
 
-    def get_connected_clients_list(self):
+    def get_other_connected_clients(self, addr) -> str:
         with self.lock:
-            return list(self.connected_clients.keys())
+            client_list = self.connected_clients.keys()
+            client_list_to_send = ""
+            for index, client in enumerate(client_list):
+                if client != addr:
+                    client_list_to_send += f"Client {index}: {client}\n"
+
+            if client_list_to_send == "":
+                client_list_to_send = "No other clients connected."
+            return client_list_to_send
 
 
 if __name__ == "__main__":
