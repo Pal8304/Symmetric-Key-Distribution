@@ -37,7 +37,7 @@ class KeyDistributionCenter:
             self.kdc_socket.close()
 
     def on_client_request(self, client_socket, addr):
-        if not self.authenticate_client(addr):
+        if not self.authenticate_client(client_socket, addr):
             print("Client not authenticated:", addr)
             client_socket.close()
             return
@@ -56,7 +56,7 @@ class KeyDistributionCenter:
 
                 # Process request (e.g., send session key or handle other commands)
                 # For now, just echoing the message back
-                client_socket.sendall(f"ECHO: {msg}".encode("utf-8"))
+                client_socket.sendto(f"ECHO: {msg}".encode("utf-8"), addr)
 
         except (ConnectionResetError, ConnectionAbortedError) as e:
             print(f"Connection error with {addr}: {e}")
@@ -68,9 +68,15 @@ class KeyDistributionCenter:
                     del self.connected_clients[addr]
             client_socket.close()
 
-    def authenticate_client(self, addr):
-        # Add some actual authentication logic here
-        return True
+    def authenticate_client(self, client_socket: socket, addr):
+        client_socket.sendto("Enter password:".encode("utf-8"), addr)
+        password = client_socket.recv(1024).decode("utf-8")
+        if password == "password":
+            client_socket.sendto("Authenticated successfully".encode("utf-8"), addr)
+            return True
+        else:
+            client_socket.sendto("Authentication failed".encode("utf-8"), addr)
+            return False
 
     def get_connected_clients_list(self):
         with self.lock:
