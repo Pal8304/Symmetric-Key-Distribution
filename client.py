@@ -1,5 +1,7 @@
 import socket
 
+from diffiehellman import DiffieHellman
+
 
 class Client:
     def __init__(self, client_id, client_port=8001):
@@ -7,12 +9,13 @@ class Client:
         self.client_port = client_port
         self.client_socket = None
         self.authenticated = False
+        self.diffie_hellman = DiffieHellman(4)
 
     def connect_to_kdc(self, kdc_host=socket.gethostname(), kdc_port=8000):
         self.client_socket = socket.socket()
         self.client_socket.connect((kdc_host, kdc_port))
         msg = self.client_socket.recv(1024).decode()
-        if msg.count("password") > 0:
+        if "password" in msg:
             input_password = input("Enter password: ")
             self.client_socket.send(input_password.encode())
         msg = self.client_socket.recv(1024).decode()
@@ -33,26 +36,44 @@ class Client:
 
     def send_message(self, message):
         self.client_socket.send(message.encode())
-        print("Message sent to Key Distribution Center.")
 
     def receive_message(self):
         message = self.client_socket.recv(1024).decode()
-        # print("Received from Key Distribution Center: " + message)
         return message
+
+    def handle_diffie_hellman(self, other_public_key):
+        self.diffie_hellman.generate_key(int(other_public_key, 16))
+        shared_secret = self.diffie_hellman.get_key()
+        print(f"Shared secret generated: {shared_secret}")
+        # Send shared secret to KDC for validation
+        self.send_message(f"SHARED_SECRET:{shared_secret}")
 
 
 if __name__ == "__main__":
     client = Client(client_id=1)
     client.connect_to_kdc()
-    while True and client.authenticated:
+    while client.authenticated:
         try:
-            message = input("Enter command: ")
-            client.send_message(message)
-            response = client.receive_message()
-            print("Response from Key Distribution Center:", response)
-            if response == "exit":
-                break
+            command = input("Enter command: ")
+            if command.startswith("REQUEST_CONNECTION"):
+                # Extract target address from the command
+                _, address_part = command.split(":")
+                client.send_message(f"REQUEST_CONNECTION:{address_part}")
+                response = client.receive_message()
+                print("Response from KDC:", response)
+                if response.startswith("PUBLIC_KEY"):
+                    _, other_public_key = response.split(":")
+                    client.handle_diffie_hellman(other_public_key)
+                    # Wait for KDC approval
+                    approval = client.receive_message()
+                    print("KDC Approval:", approval)
+                else:
+                    print("Failed to receive public key from KDC.")
+            else:
+                client.send_message(command)
+                response = client.receive_message()
+                print("Response from KDC:", response)
         except KeyboardInterrupt:
-            print("Shutting down client.")
+            print("Closing client.")
             break
     client.close()
