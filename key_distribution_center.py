@@ -1,8 +1,6 @@
 import socket
 from threading import Lock, Thread
 
-from diffie_helman import DiffieHellman
-
 
 class KeyDistributionCenter:
     def __init__(self, kdc_port=8000, kdc_password="password"):
@@ -48,9 +46,17 @@ class KeyDistributionCenter:
 
         with self.lock:
             self.connected_clients[addr] = client_socket
-            self.connected_clients_diffie_hellman[addr] = DiffieHellman(4)
+            # self.connected_clients_diffie_hellman[addr] = DiffieHellman(4)
+            # client_socket.sendto(
+            #     f"PUBLIC_KEY:{self.connected_clients_diffie_hellman[addr].public_key}".encode(
+            #         "utf-8"
+            #     ),
+            #     addr,
+            # )
             print("Client authenticated:", addr)
-
+            public_key = client_socket.recv(4096).decode("utf-8")
+            self.connected_clients_diffie_hellman[addr] = public_key
+            # print(f"Received public key {public_key}")
         try:
             while True:
                 msg = client_socket.recv(1024).decode("utf-8")
@@ -109,18 +115,26 @@ class KeyDistributionCenter:
             #     f"Sending public key {self.connected_clients_diffie_hellman[target_addr].public_key} to {addr}"
             # )
             client_socket.sendto(
-                f"DH_PUBLIC_KEY:{self.connected_clients_diffie_hellman[target_addr].public_key}".encode(
+                f"DH_PUBLIC_KEY:{self.connected_clients_diffie_hellman[target_addr]}".encode(
                     "utf-8"
                 ),
                 addr,
             )
             target_socket = self.connected_clients[target_addr]
             target_socket.sendto(
-                f"DH_PUBLIC_KEY:{self.connected_clients_diffie_hellman[addr].public_key}".encode(
+                f"DH_PUBLIC_KEY:{self.connected_clients_diffie_hellman[addr]}".encode(
                     "utf-8"
                 ),
                 target_addr,
             )
+            shared_key_from_client = client_socket.recv(4096).decode("utf-8")
+            shared_key_from_target = target_socket.recv(4096).decode("utf-8")
+            print(f"Shared key from {addr}: {shared_key_from_client}")
+            print(f"Shared key from {target_addr}: {shared_key_from_target}")
+            if shared_key_from_client == shared_key_from_target:
+                print(f"Shared keys match between {addr} and {target_addr}")
+            else:
+                print(f"Shared keys don't match between {addr} and {target_addr}")
         else:
             client_socket.sendto("Client not found".encode("utf-8"), addr)
 
