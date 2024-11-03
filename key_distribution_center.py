@@ -8,6 +8,7 @@ class KeyDistributionCenter:
         self.kdc_port = kdc_port
         self.connected_clients = {}
         self.connected_clients_diffie_hellman = {}
+        self.diffie_hellman_shared_keys = {}  # shared key -> (client1, client2)
         self.kdc_password = kdc_password
         self.lock = Lock()  # Protect access to shared resources
 
@@ -73,6 +74,25 @@ class KeyDistributionCenter:
                     target_addr = eval(target_addr_str)
                     self.handle_connection_request(client_socket, addr, target_addr)
 
+                elif msg.startswith("SHARED_KEY"):
+                    if msg in self.diffie_hellman_shared_keys:
+                        client1 = self.diffie_hellman_shared_keys[msg][0]
+                        client2 = self.diffie_hellman_shared_keys[msg][1]
+                        if addr == client2:
+                            print(f"Shared key {msg} received from {addr}")
+                            print(f"Shared keys match between {client1} and {client2}")
+                            client_socket.sendto(
+                                "Shared keys match".encode("utf-8"), addr
+                            )
+                        else:
+                            print(f"Shared key {msg} received from {addr}")
+                            print(
+                                f"Shared keys don't match between {client1} and {client2}"
+                            )
+                            client_socket.sendto(
+                                "Shared keys don't match".encode("utf-8"), addr
+                            )
+                            self.diffie_hellman_shared_keys.pop(msg)
                 else:
                     client_socket.sendto("Unknown Command".encode("utf-8"), addr)
 
@@ -120,6 +140,14 @@ class KeyDistributionCenter:
                 ),
                 addr,
             )
+            shared_key_from_client = client_socket.recv(4096).decode("utf-8")
+            print(f"Shared key from {addr}: {shared_key_from_client}")
+
+            self.diffie_hellman_shared_keys[shared_key_from_client] = (
+                addr,
+                target_addr,
+            )
+
             target_socket = self.connected_clients[target_addr]
             target_socket.sendto(
                 f"DH_PUBLIC_KEY:{self.connected_clients_diffie_hellman[addr]}".encode(
@@ -127,14 +155,12 @@ class KeyDistributionCenter:
                 ),
                 target_addr,
             )
-            shared_key_from_client = client_socket.recv(4096).decode("utf-8")
-            shared_key_from_target = target_socket.recv(4096).decode("utf-8")
-            print(f"Shared key from {addr}: {shared_key_from_client}")
-            print(f"Shared key from {target_addr}: {shared_key_from_target}")
-            if shared_key_from_client == shared_key_from_target:
-                print(f"Shared keys match between {addr} and {target_addr}")
-            else:
-                print(f"Shared keys don't match between {addr} and {target_addr}")
+            # shared_key_from_target = target_socket.recv(4096).decode("utf-8")
+            # print(f"Shared key from {target_addr}: {shared_key_from_target}")
+            # if shared_key_from_client == shared_key_from_target:
+            #     print(f"Shared keys match between {addr} and {target_addr}")
+            # else:
+            #     print(f"Shared keys don't match between {addr} and {target_addr}")
         else:
             client_socket.sendto("Client not found".encode("utf-8"), addr)
 
