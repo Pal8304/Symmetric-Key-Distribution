@@ -17,21 +17,23 @@ class Client:
         self.client_socket = socket.socket()
         self.client_socket.connect((kdc_host, kdc_port))
         msg = self.client_socket.recv(1024).decode()
+
         if "password" in msg:
             input_password = input("Enter password: ")
             self.client_socket.send(input_password.encode())
         msg = self.client_socket.recv(1024).decode()
+
         if msg == "Authenticated successfully":
             print("Authenticated with Key Distribution Center.")
             self.authenticated = True
             self.diffie_hellman = DiffieHellman(4)
             self.client_socket.send(f"{self.diffie_hellman.public_key}".encode())
-            # print(f"Sent public key {self.diffie_hellman.public_key}")
         else:
             print("Failed to authenticate with Key Distribution Center.")
             self.authenticated = False
             self.client_socket.close()
             return
+
         print("Connected to Key Distribution Center.")
 
     def close(self):
