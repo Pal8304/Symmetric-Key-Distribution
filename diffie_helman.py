@@ -3,10 +3,9 @@ import secrets
 
 
 class DiffieHellman(object):
-    def __init__(self, session_id, group=17, generator=2,  key_length=180):
+    def __init__(self, session_id, group=17, generator=2, key_length=180):
         min_key_length = 180
         valid_generators = [2, 3, 5, 7]
-
         self.generator = generator if generator in valid_generators else 2
         self.key_length = key_length if key_length >= min_key_length else min_key_length
         self.session_id = session_id

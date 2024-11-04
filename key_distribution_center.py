@@ -1,9 +1,10 @@
-import socket
 import random
+import socket
 from threading import Lock, Thread
 
-group = (5,14,15,16,17,18)
-generator = (2,3,5,7)
+group = (5, 14, 15, 16, 17, 18)
+generator = (2, 3, 5, 7)
+
 
 class KeyDistributionCenter:
     def __init__(self, kdc_port=8000, kdc_password="password"):
@@ -57,7 +58,7 @@ class KeyDistributionCenter:
             print("Client authenticated:", addr)
             public_key = client_socket.recv(4096).decode("utf-8")
             self.connected_clients_diffie_hellman[addr] = public_key
-            
+
         try:
             while True:
                 msg = client_socket.recv(1024).decode("utf-8")
@@ -73,8 +74,10 @@ class KeyDistributionCenter:
                 elif msg.startswith("REQUEST_CONNECTION"):
                     _, target_addr_str = msg.split(":")
                     target_addr = eval(target_addr_str)
-                    session_id = random.randint(10000,100000000)
-                    self.handle_connection_request(client_socket, addr, target_addr , session_id)
+                    session_id = random.randint(10000, 100000000)
+                    self.handle_connection_request(
+                        client_socket, addr, target_addr, session_id
+                    )
 
                 elif msg.startswith("SHARED_KEY"):
                     if msg in self.diffie_hellman_shared_keys:
@@ -89,21 +92,29 @@ class KeyDistributionCenter:
                                 f"Shared keys don't match between {client1} and {client2}"
                             )
                             self.diffie_hellman_shared_keys.pop(msg)
-                
+
                 elif msg.startswith("START_COMMUNICATION"):
                     _, target_addr_str = msg.split(":")
                     target_addr = eval(target_addr_str)
                     if target_addr in self.connected_clients:
-                        client_socket.sendto(f"COMMUNICATION ESTABLISHED BETWEEN {addr} AND {target_addr} WRITE 'EXIT' TO TERMINATE COMMUNICATION".encode(),addr)
-                        self.connected_clients[target_addr].sendto(f"COMMUNICATION ESTABLISHED BETWEEN {addr} AND {target_addr} WRITE 'EXIT' TO TERMINATE COMMUNICATION".encode(),target_addr)
+                        client_socket.sendto(
+                            f"COMMUNICATION ESTABLISHED BETWEEN {addr} AND {target_addr} WRITE 'EXIT' TO TERMINATE COMMUNICATION".encode(),
+                            addr,
+                        )
+                        self.connected_clients[target_addr].sendto(
+                            f"COMMUNICATION ESTABLISHED BETWEEN {addr} AND {target_addr} WRITE 'EXIT' TO TERMINATE COMMUNICATION".encode(),
+                            target_addr,
+                        )
                     else:
                         client_socket.sendto("Client not found".encode("utf-8"), addr)
-                
+
                 elif msg.startswith("MESSAGE"):
-                    _, target_addr_str,encrypted_message = msg.split(":")
+                    _, target_addr_str, encrypted_message = msg.split(":")
                     target_addr = eval(target_addr_str)
                     if target_addr in self.connected_clients:
-                        self.connected_clients[target_addr].sendto(f"ENCRYPTED:{encrypted_message}".encode(),target_addr)
+                        self.connected_clients[target_addr].sendto(
+                            f"ENCRYPTED:{encrypted_message}".encode(), target_addr
+                        )
                     else:
                         client_socket.sendto("Client not found".encode("utf-8"), addr)
                 else:
@@ -131,8 +142,9 @@ class KeyDistributionCenter:
                 client_list_to_send = "No other clients connected."
             return client_list_to_send
 
-    def handle_connection_request(self, client_socket: socket, addr, target_addr,session_id):
-        
+    def handle_connection_request(
+        self, client_socket: socket, addr, target_addr, session_id
+    ):
         if target_addr in self.connected_clients:
             client_socket.sendto(
                 f"DH_PUBLIC_KEY:{self.connected_clients_diffie_hellman[target_addr]}:{session_id}".encode(
@@ -156,16 +168,16 @@ class KeyDistributionCenter:
                 ),
                 target_addr,
             )
-                    
+
         else:
             client_socket.sendto("Client not found".encode("utf-8"), addr)
-    
 
     def close(self):
         with self.lock:
             for client_socket in self.connected_clients.values():
                 client_socket.close()
             self.kdc_socket.close()
+
 
 if __name__ == "__main__":
     kdc = KeyDistributionCenter()

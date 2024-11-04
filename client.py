@@ -38,18 +38,19 @@ class Client:
 
         print("Connected to Key Distribution Center.")
 
-
     def send_message(self):
         while self.running:
             message = input()
             if message:
                 try:
                     if self.ongoing_communication:
-                        start,addr,main_message = message.split(":")
-                        if main_message=="EXIT":
-                            self.ongoing_communication=False
-                        
-                        self.client_socket.send(f"{start}:{addr}:{self.message_communication.encrypt_message(main_message)}".encode())
+                        start, addr, main_message = message.split(":")
+                        if main_message == "EXIT":
+                            self.ongoing_communication = False
+
+                        self.client_socket.send(
+                            f"{start}:{addr}:{self.message_communication.encrypt_message(main_message)}".encode()
+                        )
                     else:
                         self.client_socket.send(message.encode())
                     print("Message sent to Key Distribution Center.")
@@ -64,27 +65,31 @@ class Client:
                 message = self.client_socket.recv(4096).decode(encoding="utf-8")
                 if message:
                     if message.startswith("DH_PUBLIC_KEY"):
-                        _, public_key,session_id = message.split(":")
+                        _, public_key, session_id = message.split(":")
                         self.diffie_hellman.session_id = int(session_id)
                         self.diffie_hellman.generate_key(int(public_key))
                         self.client_socket.send(
                             f"SHARED_KEY:{self.diffie_hellman.get_key()}".encode()
                         )
                         print("SHARED_KEY:", self.diffie_hellman.get_key())
-                        self.message_communication = Message(self.diffie_hellman.get_key())
-                    
+                        self.message_communication = Message(
+                            self.diffie_hellman.get_key()
+                        )
+
                     elif message.startswith("ENCRYPTED"):
                         _, encrypted_message = message.split(":")
-                        decrypted_message = self.message_communication.decrypt_message(encrypted_message)
-                        if decrypted_message=="EXIT":
+                        decrypted_message = self.message_communication.decrypt_message(
+                            encrypted_message
+                        )
+                        if decrypted_message == "EXIT":
                             self.ongoing_communication = False
                         else:
                             print(f"Message Received: {decrypted_message}")
-                    
+
                     elif message.startswith("COMMUNICATION ESTABLISHED"):
                         self.ongoing_communication = True
                         print(f"{message}")
-                        
+
                     else:
                         print(f"\nReceived: {message}")
                 else:
@@ -102,6 +107,7 @@ class Client:
         if self.client_socket:
             self.client_socket.close()
             print("Connection to Key Distribution Center closed.")
+
 
 if __name__ == "__main__":
     client = Client(client_id=1)
