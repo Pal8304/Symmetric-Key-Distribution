@@ -3,7 +3,7 @@ import secrets
 
 
 class DiffieHellman(object):
-    def __init__(self, session_id, generator=2, group=17, key_length=540):
+    def __init__(self, session_id, group=17, generator=2,  key_length=180):
         min_key_length = 180
         valid_generators = [2, 3, 5, 7]
 

@@ -2,6 +2,7 @@ import socket
 import threading
 
 from diffie_helman import DiffieHellman
+from message_transfer import Message
 
 
 class Client:
@@ -12,6 +13,7 @@ class Client:
         self.authenticated = False
         self.running = True  # Control the client loop
         self.diffie_hellman = None
+        self.ongoing_communication = False
 
     def connect_to_kdc(self, kdc_host=socket.gethostname(), kdc_port=8000):
         self.client_socket = socket.socket()
@@ -26,7 +28,7 @@ class Client:
         if msg == "Authenticated successfully":
             print("Authenticated with Key Distribution Center.")
             self.authenticated = True
-            self.diffie_hellman = DiffieHellman(4)
+            self.diffie_hellman = DiffieHellman(0)
             self.client_socket.send(f"{self.diffie_hellman.public_key}".encode())
         else:
             print("Failed to authenticate with Key Distribution Center.")
@@ -36,18 +38,20 @@ class Client:
 
         print("Connected to Key Distribution Center.")
 
-    def close(self):
-        self.running = False
-        if self.client_socket:
-            self.client_socket.close()
-            print("Connection to Key Distribution Center closed.")
 
     def send_message(self):
         while self.running:
             message = input()
             if message:
                 try:
-                    self.client_socket.send(message.encode())
+                    if self.ongoing_communication:
+                        start,addr,main_message = message.split(":")
+                        if main_message=="EXIT":
+                            self.ongoing_communication=False
+                        
+                        self.client_socket.send(f"{start}:{addr}:{self.message_communication.encrypt_message(main_message)}".encode())
+                    else:
+                        self.client_socket.send(message.encode())
                     print("Message sent to Key Distribution Center.")
                 except Exception as e:
                     print(f"Error sending message: {e}")
@@ -59,14 +63,30 @@ class Client:
             try:
                 message = self.client_socket.recv(4096).decode(encoding="utf-8")
                 if message:
-                    print(f"\nReceived: {message}")
                     if message.startswith("DH_PUBLIC_KEY"):
-                        _, public_key = message.split(":")
+                        _, public_key,session_id = message.split(":")
+                        self.diffie_hellman.session_id = int(session_id)
                         self.diffie_hellman.generate_key(int(public_key))
                         self.client_socket.send(
                             f"SHARED_KEY:{self.diffie_hellman.get_key()}".encode()
                         )
                         print("SHARED_KEY:", self.diffie_hellman.get_key())
+                        self.message_communication = Message(self.diffie_hellman.get_key())
+                    
+                    elif message.startswith("ENCRYPTED"):
+                        _, encrypted_message = message.split(":")
+                        decrypted_message = self.message_communication.decrypt_message(encrypted_message)
+                        if decrypted_message=="EXIT":
+                            self.ongoing_communication = False
+                        else:
+                            print(f"Message Received: {decrypted_message}")
+                    
+                    elif message.startswith("COMMUNICATION ESTABLISHED"):
+                        self.ongoing_communication = True
+                        print(f"{message}")
+                        
+                    else:
+                        print(f"\nReceived: {message}")
                 else:
                     # Server has closed the connection
                     print("Disconnected from Key Distribution Center.")
@@ -77,6 +97,11 @@ class Client:
                 self.close()
                 break
 
+    def close(self):
+        self.running = False
+        if self.client_socket:
+            self.client_socket.close()
+            print("Connection to Key Distribution Center closed.")
 
 if __name__ == "__main__":
     client = Client(client_id=1)
