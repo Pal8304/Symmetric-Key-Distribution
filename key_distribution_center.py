@@ -6,7 +6,7 @@ group = (5,14,15,16,17,18)
 generator = (2,3,5,7)
 
 class KeyDistributionCenter:
-    def __init__(self, kdc_port=8000, kdc_password="gold_medal"):
+    def __init__(self, kdc_port=8000, kdc_password="password"):
         self.kdc_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.kdc_port = kdc_port
         self.connected_clients = {}
