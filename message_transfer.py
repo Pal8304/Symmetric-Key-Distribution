@@ -26,4 +26,3 @@ class Message:
             cipher.decrypt(byte_encrypted_message[16:]), AES.block_size
         )
         return decrypted_message.decode()
-        return decrypted_message.decode()

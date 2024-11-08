@@ -1,15 +1,27 @@
 # INS Assigment 
-## Topic: Symmetric Key Distribution
+## Topic: Symmetric Key Distribution using KDC
 
-## To Do : 
-- [X] Key Distribution Center(KDC) logic and authentication
-- [X] Implement the Diffie-Hellman Key Exchange Algorithm
-- [X] Hashing the shared key
-- [X] Sending messages 
+A terminal based application to simulate an approach for communications between different clients using a Key Distribution Center (KDC) implementing symmetric key distribution ( Diffie-Helman).
 
-## Commands :
-- password is password
-- client_list: prints all clients other than self 
-- REQUEST_CONNECTION:<address>
-- START_COMMUNICATION:<address>
-- MESSAGE:<address>:<message_to_be_send>
+## How to run the application
+
+```bash
+ pip install -r requirements.txt 
+ ```
+
+```  bash
+python3 key_distribution_center.py 
+```
+
+For each client create new terminal
+
+``` bash
+python3 client.py 
+```
+
+## Commands
+- password = "password" (for authentication)
+- client_list : To get the addresses of all the authenticated clients other than current one.
+- REQUEST_CONNECTION:"address of client"
+- START_COMMUNICATION:"address of client"
+- MESSAGE:"address of client":"message to be sent"

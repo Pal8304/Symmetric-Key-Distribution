@@ -7,7 +7,7 @@ generator = (2, 3, 5, 7)
 
 
 class KeyDistributionCenter:
-    def __init__(self, kdc_port=8000, kdc_password="password"):
+    def __init__(self, kdc_port: int = 8000, kdc_password="password") -> None:
         self.kdc_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.kdc_port = kdc_port
         self.connected_clients = {}
@@ -143,7 +143,7 @@ class KeyDistributionCenter:
             return client_list_to_send
 
     def handle_connection_request(
-        self, client_socket: socket, addr, target_addr, session_id
+        self, client_socket: socket.socket, addr, target_addr, session_id
     ):
         if target_addr in self.connected_clients:
             client_socket.sendto(
